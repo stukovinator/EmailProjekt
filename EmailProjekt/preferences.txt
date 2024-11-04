@@ -1,0 +1,3 @@
+delReceivers=1
+delAttachments=1
+delTitle=1

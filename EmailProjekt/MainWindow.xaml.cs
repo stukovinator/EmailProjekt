@@ -1,6 +1,8 @@
 ﻿using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Mail;
@@ -119,14 +121,25 @@ namespace EmailProjekt
                     await SmtpClient.SendMailAsync(newMail);
                 }
 
-                foreach (var emailAttachment in attachments)
+                if (Globals.deleteAttachmentsAfterSending == true)
                 {
-                    emailAttachment.Attachment.Dispose();
+                    foreach (var emailAttachment in attachments)
+                    {
+                        emailAttachment.Attachment.Dispose();
+                    }
                 }
-                attachments.Clear();
-                mailReceivers.Clear();
 
-                Console.WriteLine("Message sent, attachments and receivers cleared.");
+                if (Globals.deleteAttachmentsAfterSending == true)
+                {
+                    attachments.Clear();
+                }
+
+                if (Globals.deleteReceiversAfterSending == true)
+                {
+                    mailReceivers.Clear();
+                }
+                
+                //Console.WriteLine("Wysłano");
                 return true;
             }
             catch (Exception ex)
@@ -135,8 +148,6 @@ namespace EmailProjekt
                 return false;
             }
         }
-
-
 
         public void ShowAttachments()
         {
@@ -164,8 +175,70 @@ namespace EmailProjekt
 
             Globals.theme = 1;
 
+            LoadPreferences();
             InitializeComponent();
+
             emailSend = new EmailSender();
+        }
+
+        private void LoadPreferences()
+        {
+            string[] lines;
+            try
+            {
+                string workingDirectory = Environment.CurrentDirectory;
+                string folderPath = System.IO.Directory.GetParent(workingDirectory).Parent.Parent.FullName;
+                string filePath = System.IO.Path.Combine(folderPath, "EmailProjekt", "preferences.txt");
+
+                if (!System.IO.File.Exists(filePath))
+                {
+                    Console.WriteLine("Plik nie istnieje");
+                    return;
+                }
+
+                lines = File.ReadAllLines(filePath);
+                foreach(var line in lines)
+                {
+                    var parts = line.Split('=');
+                    if (parts.Length == 2)
+                    {
+                        string key = parts[0];
+                        string value = parts[1];
+
+                        switch (key)
+                        {
+                            case "delReceivers":
+                                Globals.deleteReceiversAfterSending = value == "1";
+                                break;
+                            case "delAttachments":
+                                Globals.deleteAttachmentsAfterSending = value == "1";
+                                break;
+                            case "delTitle":
+                                Globals.deleteTitleAfterSending = value == "1";
+                                break;
+                        }
+                    }
+                }
+                
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+
+        private void SavePreferences()
+        {
+            string workingDirectory = Environment.CurrentDirectory;
+            string folderPath = System.IO.Directory.GetParent(workingDirectory).Parent.Parent.FullName;
+            string filePath = System.IO.Path.Combine(folderPath, "EmailProjekt", "preferences.txt");
+
+            using (StreamWriter writer = new StreamWriter(filePath))
+            {
+                writer.WriteLine($"delReceivers={(Globals.deleteReceiversAfterSending ? "1" : "0")}");
+                writer.WriteLine($"delAttachments={(Globals.deleteAttachmentsAfterSending ? "1" : "0")}");
+                writer.WriteLine($"delTitle={(Globals.deleteTitleAfterSending ? "1" : "0")}");
+            }
         }
 
         public void CreateAttachmentBox(string fileName)
@@ -370,9 +443,19 @@ namespace EmailProjekt
 
                 await snackbar.ShowAsync();
 
-                adresaciPanel.Children.Clear();
-                zalacznikiPanel.Children.Clear();
-                tematField.Text = string.Empty;
+                if (Globals.deleteReceiversAfterSending == true)
+                {
+                    adresaciPanel.Children.Clear();
+                }
+                if (Globals.deleteAttachmentsAfterSending == true)
+                {
+                    zalacznikiPanel.Children.Clear();
+                }
+                if (Globals.deleteTitleAfterSending == true)
+                {
+                    tematField.Text = string.Empty;
+                }
+                
                 wiadomoscField.Text = string.Empty;
             }
             else
@@ -429,12 +512,83 @@ namespace EmailProjekt
 
                 var messageBox = new Wpf.Ui.Controls.MessageBox
                 {
-                    Title = "Załączniki",
+                    Title = "ZAŁĄCZNIKI",
                     Content = "Dodano załącznik(i) do wiadomości.",
                     CloseButtonAppearance = ControlAppearance.Primary,
                     CloseButtonText = "OK"
                 };
                 messageBox.ShowDialogAsync();
+            }
+        }
+
+        private async void SettingsButtonClick(object sender, RoutedEventArgs e)
+        {
+            var stackPanel = new StackPanel()
+            {
+                Orientation = Orientation.Vertical,
+                Margin = new Thickness(15)
+            };
+
+            var option1 = new CheckBox()
+            {
+                Name = "DeleteReceiversCheckBox",
+                Content = "Usuwaj adresatów po wysłaniu wiadomości",
+                Margin = new Thickness(5),
+                IsChecked = Globals.deleteReceiversAfterSending
+            };
+
+            var option2 = new CheckBox()
+            {
+                Name = "DeleteTitleCheckBox",
+                Content = "Usuwaj temat po wysłaniu wiadomości",
+                Margin = new Thickness(5),
+                IsChecked = Globals.deleteTitleAfterSending
+            };
+
+            var option3 = new CheckBox()
+            {
+                Name = "DeleteAttachmentsCheckBox",
+                Content = "Usuwaj załączniki po wysłaniu wiadomości",
+                Margin = new Thickness(5),
+                IsChecked = Globals.deleteAttachmentsAfterSending
+            };
+
+            stackPanel.Children.Add(option1);
+            stackPanel.Children.Add(option2);
+            stackPanel.Children.Add(option3);
+
+            var optionsContentDialog = new Wpf.Ui.Controls.ContentDialog
+            {
+                Title = "USTAWIENIA APLIKACJI",
+                Content = stackPanel,
+                PrimaryButtonText = "Zapisz",
+                PrimaryButtonAppearance = ControlAppearance.Primary,
+                CloseButtonAppearance = ControlAppearance.Secondary,
+                CloseButtonText = "Anuluj",
+                DialogHost = contentPresenter
+            };
+
+            var result = await optionsContentDialog.ShowAsync();
+
+            if (result == Wpf.Ui.Controls.ContentDialogResult.Primary)
+            {
+                Globals.deleteReceiversAfterSending = option1.IsChecked == true;
+                Globals.deleteTitleAfterSending = option2.IsChecked == true;
+                Globals.deleteAttachmentsAfterSending = option3.IsChecked == true;
+
+                var snackbar = new Snackbar(snackbarPresenter)
+                {
+                    Title = "SUKCES!",
+                    Content = "Zmiany zapisano",
+                    Appearance = ControlAppearance.Success,
+                    Icon = new SymbolIcon() { Symbol = SymbolRegular.DocumentSettings20 },
+                };
+
+                await snackbar.ShowAsync();
+
+                //Console.WriteLine($"USTAWIENIA: \n USUWAJ ADRESATÓW: {Globals.deleteReceiversAfterSending} \n USUWAJ TEMAT: {Globals.deleteTitleAfterSending} \n USUWAJ ZAŁĄCZNIKI: {Globals.deleteAttachmentsAfterSending}");
+
+                SavePreferences();
             }
         }
     }

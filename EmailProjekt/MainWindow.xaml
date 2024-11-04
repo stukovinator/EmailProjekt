@@ -24,7 +24,7 @@
         </Grid.RowDefinitions>
 
         <Menu Grid.Row="1" >
-            <ui:MenuItem Icon="{ui:SymbolIcon Settings24}" Header="USTAWIENIA" FontWeight="Light" FontFamily="/Resources/Fonts/#Montserrat Medium"/>
+            <ui:MenuItem Icon="{ui:SymbolIcon Settings24}" Click="SettingsButtonClick" Header="USTAWIENIA" FontWeight="Light" FontFamily="/Resources/Fonts/#Montserrat Medium"/>
             <Separator/>
             <ui:MenuItem Icon="{ui:SymbolIcon DarkTheme24}" Click="MenuThemeChangeButtonClick"/>
         </Menu>
@@ -84,6 +84,8 @@
 
             <ui:SnackbarPresenter x:Name="snackbarPresenter" VerticalAlignment="Bottom"/>
         </Grid>
+
+        <ContentPresenter x:Name="contentPresenter" Grid.RowSpan="3"/>
 
         <ui:TitleBar Icon="{ui:SymbolIcon FolderMail28}" Height="30" VerticalAlignment="Center" Title="K-EMAIL SENDER" FontFamily="/Resources/Fonts/#Fugaz One Regular" Grid.Row="0"/>
     </Grid>

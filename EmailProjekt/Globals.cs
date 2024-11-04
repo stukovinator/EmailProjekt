@@ -9,6 +9,8 @@ namespace EmailProjekt
     public static class Globals
     {
         public static bool deleteReceiversAfterSending = true;
+        public static bool deleteTitleAfterSending = true;
+        public static bool deleteAttachmentsAfterSending = true;
         public static int theme = 1;
     }
 }
